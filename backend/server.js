@@ -13,11 +13,10 @@ try { require("dotenv").config(); } catch {}
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET && process.env.NODE_ENV === "production") {
-    console.error("FATAL: JWT_SECRET environment variable not set");
-    process.exit(1);
+const SECRET = JWT_SECRET || require("crypto").randomBytes(32).toString("hex");
+if (!JWT_SECRET) {
+    console.warn("WARNING: JWT_SECRET not set — using auto-generated secret (sessions will reset on restart)");
 }
-const SECRET = JWT_SECRET || "dev-secret-change-in-production";
 const PORT = process.env.PORT || 3001;
 const TAX_RATE = 0.20;
 const INVOICES_DIR = path.join(__dirname, "invoices");
