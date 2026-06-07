@@ -33,7 +33,7 @@ app.use(helmet());
 app.use(cors({
     origin: process.env.CORS_ORIGIN
         ? process.env.CORS_ORIGIN.split(",")
-        : ["http://localhost:3000", "https://business-in-a-box-backend.onrender.com"],
+        : ["https://business-in-a-box-backend.onrender.com"],
     credentials: true,
 }));
 app.use(express.json({ limit: "1mb" }));
