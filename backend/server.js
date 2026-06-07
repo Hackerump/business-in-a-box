@@ -27,6 +27,12 @@ app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN || "http://localhost:3000", credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 
+// Serve frontend build in production
+const frontendBuild = path.join(__dirname, "..", "frontend", "build");
+if (process.env.NODE_ENV === "production" && fs.existsSync(frontendBuild)) {
+    app.use(express.static(frontendBuild));
+}
+
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, max: 20,
     message: { success: false, message: "Too many attempts, try again later" },
@@ -665,6 +671,15 @@ app.get("/api/invoice/:fileName", authMiddleware, async (req, res) => {
         if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: "File not found" });
         res.download(filePath);
     } catch { res.status(500).json({ success: false, message: "Database error" }); }
+});
+
+// Catch-all: serve frontend index.html for SPA routes
+const frontendBuild = path.join(__dirname, "..", "frontend", "build");
+const indexHtml = path.join(frontendBuild, "index.html");
+app.get("*", (req, res) => {
+    if (req.path.startsWith("/api")) return res.status(404).json({ success: false, message: "Not found" });
+    if (fs.existsSync(indexHtml)) return res.sendFile(indexHtml);
+    res.status(200).json({ message: "Business-in-a-Box API", docs: "/api/health" });
 });
 
 app.use((err, req, res, next) => {
