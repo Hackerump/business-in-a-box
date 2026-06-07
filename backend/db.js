@@ -2,51 +2,41 @@ const path = require("path");
 
 const toPgParams = (sql, params) => {
     let idx = 0;
-    const converted = sql.replace(/\?/g, () => `$${++idx}`);
-    return { sql: converted, params };
+    const sql2 = sql.replace(/\?/g, () => `$${++idx}`);
+    return { sql: sql2, params };
 };
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
 if (DATABASE_URL) {
     const { Pool } = require("pg");
-    const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
+    let pool;
+    try {
+        pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 5000 });
+    } catch (e) {
+        console.error("Failed to create PostgreSQL pool:", e.message);
+        process.exit(1);
+    }
+
+    const query = (sql, params) => pool.query(sql, params || []).catch(err => {
+        console.error("PostgreSQL error:", err.message);
+        throw err;
+    });
 
     module.exports = {
-        run: (sql, params) => {
-            const q = toPgParams(sql, params || []);
-            return pool.query(q.sql, q.params).then(r => ({ lastID: r.rows[0]?.id, changes: r.rowCount, rows: r.rows }));
-        },
-        get: (sql, params) => {
-            const q = toPgParams(sql, params || []);
-            return pool.query(q.sql, q.params).then(r => r.rows[0] || null);
-        },
-        all: (sql, params) => {
-            const q = toPgParams(sql, params || []);
-            return pool.query(q.sql, q.params).then(r => r.rows);
-        },
-        execSchema: async (sql) => { await pool.query(sql); },
+        run: (sql, params) => query(sql, params).then(r => ({ lastID: r.rows[0]?.id, changes: r.rowCount, rows: r.rows })),
+        get: (sql, params) => query(sql, params).then(r => r.rows[0] || null),
+        all: (sql, params) => query(sql, params).then(r => r.rows),
+        execSchema: (sql) => pool.query(sql),
         close: () => pool.end(),
         isPG: true,
-        dateTrunc: (fmt, col) => {  // fmt: 'month', col: column name
-            return { sql: `DATE_TRUNC('${fmt}', ${col})`, format: fmt };
-        },
-        toChar: (col, fmt) => {
-            return { sql: `TO_CHAR(${col}, '${fmt}')`, format: fmt };
-        },
-        strftime: (fmt, col) => {
-            // Map SQLite strftime to PostgreSQL
-            const map = { '%Y-%m': `TO_CHAR(${col}, 'YYYY-MM')` };
-            return { sql: map[fmt] || `TO_CHAR(${col}, '${fmt}')` };
-        },
+        strftime: (fmt, col) => ({ sql: `TO_CHAR(${col}, 'YYYY-MM')` }),
         insertOrIgnore: (table, cols, values, conflictCol) => {
             const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
             return `INSERT INTO ${table} (${cols.join(", ")}) VALUES (${placeholders}) ON CONFLICT (${conflictCol}) DO NOTHING`;
         },
         returning: (sql) => {
-            if (!sql.toUpperCase().includes("RETURNING")) {
-                return sql + " RETURNING *";
-            }
+            if (!sql.toUpperCase().includes("RETURNING")) return sql + " RETURNING *";
             return sql;
         },
     };
@@ -79,9 +69,7 @@ if (DATABASE_URL) {
         serialize: (fn) => db.serialize(fn),
         close: () => { db.close(); },
         isPG: false,
-        dateTrunc: (fmt, col) => ({ sql: col, format: fmt }),  // SQLite stores as TEXT already
-        toChar: (col, fmt) => ({ sql: col, format: fmt }),
-        strftime: (fmt, col) => ({ sql: `strftime('${fmt}', ${col})`, format: fmt }),
+        strftime: (fmt, col) => ({ sql: `strftime('${fmt}', ${col})` }),
         insertOrIgnore: (table, cols, values) => {
             const placeholders = values.map(() => "?").join(", ");
             return `INSERT OR IGNORE INTO ${table} (${cols.join(", ")}) VALUES (${placeholders})`;

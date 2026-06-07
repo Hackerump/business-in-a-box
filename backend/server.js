@@ -63,7 +63,7 @@ const initSchema = async () => {
         }
     } catch {}
 };
-initSchema();
+initSchema().catch(err => console.error("Schema init error (DB may be unavailable):", err.message));
 
 const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
