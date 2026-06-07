@@ -30,6 +30,7 @@ app.use(express.json({ limit: "1mb" }));
 
 // Serve frontend build in production
 const frontendBuild = path.join(__dirname, "..", "frontend", "build");
+const indexHtml = path.join(frontendBuild, "index.html");
 if (process.env.NODE_ENV === "production" && fs.existsSync(frontendBuild)) {
     app.use(express.static(frontendBuild));
 }
@@ -675,8 +676,6 @@ app.get("/api/invoice/:fileName", authMiddleware, async (req, res) => {
 });
 
 // Catch-all: serve frontend index.html for SPA routes
-const frontendBuild = path.join(__dirname, "..", "frontend", "build");
-const indexHtml = path.join(frontendBuild, "index.html");
 app.get("*", (req, res) => {
     if (req.path.startsWith("/api")) return res.status(404).json({ success: false, message: "Not found" });
     if (fs.existsSync(indexHtml)) return res.sendFile(indexHtml);
