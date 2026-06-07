@@ -676,7 +676,8 @@ app.get("/api/invoice/:fileName", authMiddleware, async (req, res) => {
 });
 
 // Catch-all: serve frontend index.html for SPA routes
-app.get("*", (req, res) => {
+app.use((req, res, next) => {
+    if (req.method !== "GET") return next();
     if (req.path.startsWith("/api")) return res.status(404).json({ success: false, message: "Not found" });
     if (fs.existsSync(indexHtml)) return res.sendFile(indexHtml);
     res.status(200).json({ message: "Business-in-a-Box API", docs: "/api/health" });
