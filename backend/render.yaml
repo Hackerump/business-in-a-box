@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: business-in-a-box-api
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://your-frontend.vercel.app

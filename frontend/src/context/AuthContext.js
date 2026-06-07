@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext(null);
-const API = process.env.REACT_APP_API_URL || "http://localhost:3001/api";
+const API = window.__REACT_APP_API_URL__ || process.env.REACT_APP_API_URL || "http://localhost:3001/api";
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);

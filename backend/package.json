@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
+    "build": "mkdir -p invoices",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -20,6 +21,7 @@
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
     "pdfkit": "^0.19.0",
+    "pg": "^8.13.0",
     "puppeteer": "^25.1.0",
     "qrcode": "^1.5.4",
     "sqlite3": "^6.0.1"

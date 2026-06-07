@@ -17,7 +17,6 @@ backend/*.db-wal
 backend/*.db-shm
 
 # Generated invoices
-backend/invoices/
 backend/invoices/*.pdf
 
 # Build output
