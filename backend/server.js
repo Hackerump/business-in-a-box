@@ -24,8 +24,12 @@ const INVOICES_DIR = path.join(__dirname, "invoices");
 if (!fs.existsSync(INVOICES_DIR)) fs.mkdirSync(INVOICES_DIR, { recursive: true });
 
 app.use(helmet());
-const corsOrigin = process.env.CORS_ORIGIN || (process.env.NODE_ENV === "production" ? false : "http://localhost:3000");
-app.use(cors({ origin: corsOrigin, credentials: true }));
+app.use(cors({
+    origin: process.env.CORS_ORIGIN
+        ? process.env.CORS_ORIGIN.split(",")
+        : ["http://localhost:3000", "https://business-in-a-box-backend.onrender.com"],
+    credentials: true,
+}));
 app.use(express.json({ limit: "1mb" }));
 
 // Serve frontend build in production
