@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "build": "mkdir -p invoices",
+    "build": "node -e \"require('fs').mkdirSync(require('path').join(__dirname,'invoices'),{recursive:true})\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
