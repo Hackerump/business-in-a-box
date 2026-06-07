@@ -42,7 +42,7 @@ export default function Sales() {
         }).catch(() => {}).finally(() => setLoading(false));
     };
 
-    useEffect(() => { fetchSales(1); }, []);
+    useEffect(() => { fetchSales(1); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (saleType === "service" && serviceHours && serviceRate) {
