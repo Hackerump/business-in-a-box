@@ -11,7 +11,13 @@ const db = require("./db");
 
 try { require("dotenv").config(); } catch {}
 
+const { createClient } = require("@supabase/supabase-js");
+
 const app = express();
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_KEY
+);
 const JWT_SECRET = process.env.JWT_SECRET;
 const SECRET = JWT_SECRET || require("crypto").randomBytes(32).toString("hex");
 if (!JWT_SECRET) {
