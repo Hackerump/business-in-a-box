@@ -1,126 +1,56 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
+import Navbar from "./components/Navbar";
+import Dashboard from "./components/Dashboard";
+import Sales from "./components/Sales";
+import Expenses from "./components/Expenses";
+import Inventory from "./components/Inventory";
+import Payroll from "./components/Payroll";
+import Reports from "./components/Reports";
+import Invoice from "./components/Invoice";
+import Tutorial from "./components/Tutorial";
+import Settings from "./components/Settings";
+import Login from "./components/Login";
+import Register from "./components/Register";
+import "./App.css";
 
-const API = process.env.REACT_APP_API_URL;
+function ProtectedApp() {
+    const { user, loading } = useAuth();
+    const [activeTab, setActiveTab] = useState("dashboard");
+
+    if (loading) return <div className="loading-screen"><div className="spinner" /></div>;
+    if (!user) return <Navigate to="/login" replace />;
+
+    const renderTab = () => {
+        switch (activeTab) {
+            case "dashboard": return <Dashboard />;
+            case "sales": return <Sales />;
+            case "expenses": return <Expenses />;
+            case "inventory": return <Inventory />;
+            case "payroll": return <Payroll />;
+            case "reports": return <Reports />;
+            case "invoice": return <Invoice />;
+            case "tutorial": return <Tutorial />;
+            case "settings": return <Settings />;
+            default: return <Dashboard />;
+        }
+    };
+
+    return (
+        <div className="app-layout">
+            <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+            <main className="main-content">{renderTab()}</main>
+        </div>
+    );
+}
 
 export default function App() {
-
-    // ---------------- STATE ----------------
-    const [sales, setSales] = useState([]);
-    const [expenses, setExpenses] = useState([]);
-    const [item, setItem] = useState("");
-    const [amount, setAmount] = useState("");
-    const [customer, setCustomer] = useState("");
-
-    // ---------------- FETCH DATA ----------------
-    const fetchData = async () => {
-        const s = await fetch(`${API}/sales`).then(r => r.json());
-        const e = await fetch(`${API}/expenses`).then(r => r.json());
-
-        setSales(s);
-        setExpenses(e);
-    };
-
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    // ---------------- ACTIONS ----------------
-    const addSale = async () => {
-        await fetch(`${API}/sales`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ item, amount })
-        });
-
-        setItem("");
-        setAmount("");
-        fetchData();
-    };
-
-    const addExpense = async () => {
-        await fetch(`${API}/expenses`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ item, amount })
-        });
-
-        setItem("");
-        setAmount("");
-        fetchData();
-    };
-
-    const generateInvoice = async () => {
-        const items = sales.map(s => ({
-            name: s.item,
-            price: s.amount
-        }));
-
-        const res = await fetch(`${API}/invoice`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                customer,
-                items
-            })
-        });
-
-        const data = await res.json();
-        alert("Invoice created: " + data.file);
-    };
-
-    // ---------------- CALCULATIONS ----------------
-    const totalSales = sales.reduce((a, b) => a + Number(b.amount), 0);
-    const totalExpenses = expenses.reduce((a, b) => a + Number(b.cost), 0);
-    const profit = totalSales - totalExpenses;
-
-    // ---------------- UI ----------------
     return (
-        <div style={{ padding: 20, fontFamily: "Arial" }}>
-            <h1>Business-in-a-Box 📊</h1>
-
-            <h3>Sales: ${totalSales}</h3>
-            <h3>Expenses: ${totalExpenses}</h3>
-            <h3>Profit: ${profit}</h3>
-
-            <hr />
-
-            <input
-                placeholder="Item"
-                value={item}
-                onChange={(e) => setItem(e.target.value)}
-            />
-
-            <input
-                placeholder="Amount"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-            />
-
-            <br /><br />
-
-            <input
-                placeholder="Customer Name"
-                value={customer}
-                onChange={(e) => setCustomer(e.target.value)}
-            />
-
-            <br /><br />
-
-            <button onClick={addSale}>Add Sale</button>
-            <button onClick={addExpense}>Add Expense</button>
-            <button onClick={generateInvoice}>Generate Invoice 🧾</button>
-
-            <hr />
-
-            <h3>Sales</h3>
-            {sales.map((s, i) => (
-                <div key={i}>{s.item} - ${s.amount}</div>
-            ))}
-
-            <h3>Expenses</h3>
-            {expenses.map((e, i) => (
-                <div key={i}>{e.item} - ${e.cost}</div>
-            ))}
-        </div>
+        <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/*" element={<ProtectedApp />} />
+        </Routes>
     );
 }
