@@ -14,6 +14,7 @@ try { require("dotenv").config(); } catch {}
 const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
+app.set("trust proxy", 1);
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY

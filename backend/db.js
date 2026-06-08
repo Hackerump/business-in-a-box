@@ -1,6 +1,5 @@
 const path = require("path");
 const dns = require("dns");
-const { URL } = require("url");
 
 const toPgParams = (sql, params) => {
     let idx = 0;
@@ -13,23 +12,19 @@ const DATABASE_URL = process.env.DATABASE_URL;
 if (DATABASE_URL) {
     const { Pool } = require("pg");
 
-    // Resolve hostname to IPv4 to avoid ENETUNREACH on IPv6
-    const parsed = new URL(DATABASE_URL);
-    const hostname = parsed.hostname;
-    let address = hostname;
-    try {
-        const results = dns.resolve4Sync(hostname);
-        if (results.length > 0) {
-            address = results[0];
-        }
-    } catch (e) {
-        console.warn("DNS resolution failed, using hostname as-is:", e.message);
-    }
-    const connStr = DATABASE_URL.replace(hostname, address);
+    // Force IPv4 DNS lookup to avoid ENETUNREACH on IPv6
+    const lookup = (hostname, opts, cb) => {
+        dns.lookup(hostname, { ...opts, family: 4 }, cb);
+    };
 
     let pool;
     try {
-        pool = new Pool({ connectionString: connStr, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 10000 });
+        pool = new Pool({
+            connectionString: DATABASE_URL,
+            ssl: { rejectUnauthorized: false },
+            connectionTimeoutMillis: 10000,
+            lookup,
+        });
     } catch (e) {
         console.error("Failed to create PostgreSQL pool:", e.message);
         process.exit(1);
