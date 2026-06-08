@@ -81,7 +81,6 @@ export default function Invoice() {
             setMessageType("error");
         }
     };
-    };
 
     const downloadInvoice = async (e) => {
         if (!lastInvoice) return;
