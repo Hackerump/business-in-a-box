@@ -1113,3 +1113,29 @@ body.dark .tutorial-item p { color: #94a3b8; }
         width: 100%;
     }
 }
+
+/* INVOICE LAYOUT */
+.invoice-layout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+.invoice-form {
+    flex: 1;
+    min-width: 0;
+}
+.invoice-sidebar {
+    width: 340px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 24px;
+}
+@media (max-width: 768px) {
+    .invoice-layout {
+        flex-direction: column;
+    }
+    .invoice-sidebar {
+        width: 100%;
+        position: static;
+    }
+}
