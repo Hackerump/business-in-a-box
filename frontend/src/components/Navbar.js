@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
 export default function Navbar({ activeTab, setActiveTab }) {
     const { user, logout } = useAuth();
     const { dark, toggle } = useTheme();
+    const [mobileOpen, setMobileOpen] = useState(false);
     const isAdmin = user?.role === "admin";
     const tabs = [
         { id: "dashboard", label: "Dashboard" },
@@ -17,32 +19,43 @@ export default function Navbar({ activeTab, setActiveTab }) {
         { id: "settings", label: "Settings", admin: true },
     ];
 
+    const handleTabClick = (id) => {
+        setActiveTab(id);
+        setMobileOpen(false);
+    };
+
     return (
-        <div className="sidebar">
-            <div className="sidebar-header">
-                <h2>Business-in-a-Box</h2>
-                <span style={{ fontSize: 11, color: "#64748b" }}>{user?.role}</span>
-            </div>
-            <nav className="sidebar-nav">
-                {tabs.filter(t => !t.admin || isAdmin).map(tab => (
-                    <button
-                        key={tab.id}
-                        className={`sidebar-link ${activeTab === tab.id ? "active" : ""}`}
-                        onClick={() => setActiveTab(tab.id)}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </nav>
-            <div className="sidebar-footer">
-                <div className="sidebar-footer-row">
-                    <span className="user-name">{user?.username}</span>
-                    <button className="btn-icon" onClick={toggle} title={dark ? "Light mode" : "Dark mode"}>
-                        {dark ? "☀️" : "🌙"}
-                    </button>
+        <>
+            <button className="hamburger" onClick={() => setMobileOpen(!mobileOpen)}>
+                <span /> <span /> <span />
+            </button>
+            {mobileOpen && <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
+            <div className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
+                <div className="sidebar-header">
+                    <h2>Business-in-a-Box</h2>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>{user?.role}</span>
                 </div>
-                <button className="btn-logout" onClick={logout}>Logout</button>
+                <nav className="sidebar-nav">
+                    {tabs.filter(t => !t.admin || isAdmin).map(tab => (
+                        <button
+                            key={tab.id}
+                            className={`sidebar-link ${activeTab === tab.id ? "active" : ""}`}
+                            onClick={() => handleTabClick(tab.id)}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </nav>
+                <div className="sidebar-footer">
+                    <div className="sidebar-footer-row">
+                        <span className="user-name">{user?.username}</span>
+                        <button className="btn-icon" onClick={toggle} title={dark ? "Light mode" : "Dark mode"}>
+                            {dark ? "☀️" : "🌙"}
+                        </button>
+                    </div>
+                    <button className="btn-logout" onClick={() => { logout(); setMobileOpen(false); }}>Logout</button>
+                </div>
             </div>
-        </div>
+        </>
     );
 }
