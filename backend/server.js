@@ -5,9 +5,11 @@ const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const path = require("path");
-const puppeteer = require("puppeteer");
+const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const db = require("./db");
+
+const safe = (v) => (v || "").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 
 try { require("dotenv").config(); } catch {}
 
@@ -588,7 +590,6 @@ app.get("/api/balance-sheet", authMiddleware, async (req, res) => {
 });
 
 /* INVOICE */
-let browserInstance = null;
 
 app.post("/api/invoice", authMiddleware, async (req, res) => {
     try {
@@ -615,52 +616,130 @@ app.post("/api/invoice", authMiddleware, async (req, res) => {
         const grandTotal = subtotal + taxAmt;
 
         const fmt = (n) => Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        const itemRows = items.map(item => {
-            const price = Number(item.price);
-            const qty = item.quantity || 1;
-            const rate = price / qty;
-            return `<tr><td>${item.name.replace(/</g,'&lt;')}</td><td class="right">${sym}${fmt(rate)}</td><td class="right">${qty}</td><td class="right">${sym}${fmt(price)}</td></tr>`;
-        }).join("\n    ");
-
-        let template = fs.readFileSync(path.join(__dirname, "invoice_template.html"), "utf8");
-        const escapeHtml = (str) => (str || "").replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-        const safe = (v) => escapeHtml(v);
-
-        template = template
-            .replaceAll("{{companyName}}", safe(companyName) || "Business-in-a-Box")
-            .replaceAll("{{phone}}", safe(phone))
-            .replaceAll("{{addressLine1}}", safe(addressLine1))
-            .replaceAll("{{addressLine2}}", safe(addressLine2))
-            .replaceAll("{{addressCountry}}", safe(addressCountry))
-            .replaceAll("{{billToName}}", safe(billToName) || "Customer")
-            .replaceAll("{{billToCompany}}", safe(billToCompany))
-            .replaceAll("{{billToAddress}}", safe(billToAddress))
-            .replaceAll("{{billToCity}}", safe(billToCity))
-            .replaceAll("{{billToCountry}}", safe(billToCountry))
-            .replaceAll("{{dateOfIssue}}", dateOfIssue ? new Date(dateOfIssue).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }))
-            .replaceAll("{{dueDate}}", dueDate ? new Date(dueDate).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "N/A")
-            .replaceAll("{{invoiceNo}}", safe(invoiceNo) || `INV-${Date.now().toString().slice(-6)}`)
-            .replaceAll("{{items}}", itemRows)
-            .replaceAll("{{currencySymbol}}", sym)
-            .replaceAll("{{currencyCode}}", code)
-            .replaceAll("{{subtotal}}", fmt(subtotal))
-            .replaceAll("{{tax}}", fmt(taxAmt))
-            .replaceAll("{{total}}", fmt(grandTotal))
-            .replaceAll("{{amountDue}}", fmt(grandTotal));
 
         const pdfFile = `invoice_${Date.now()}.pdf`;
         const pdfPath = path.join(INVOICES_DIR, pdfFile);
-        const htmlPath = pdfPath.replace(".pdf", ".html");
-        fs.writeFileSync(htmlPath, template);
 
-        if (!browserInstance) {
-            browserInstance = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-gpu"] });
-        }
-        const page = await browserInstance.newPage();
-        await page.goto("file://" + htmlPath, { waitUntil: "networkidle0", timeout: 30000 });
-        await page.pdf({ path: pdfPath, format: "A4", printBackground: true, margin: { top: "0", right: "0", bottom: "0", left: "0" } });
-        await page.close();
-        fs.unlinkSync(htmlPath);
+        const doc = new PDFDocument({ margin: 48, size: "A4" });
+        const stream = fs.createWriteStream(pdfPath);
+        doc.pipe(stream);
+
+        const bold = 0;
+        const normal = 0;
+
+        doc.font("Helvetica-Bold", 26).text(safe(companyName) || "Business-in-a-Box", 48, 48);
+        doc.font("Helvetica-Bold", 14).text("Professional Invoice", 48, 78);
+
+        doc.font("Helvetica", 11);
+        const rightX = 595 - 48;
+        const rightLines = [
+            safe(companyName) || "Business-in-a-Box",
+            safe(phone),
+            safe(addressLine1),
+            safe(addressLine2),
+            safe(addressCountry)
+        ].filter(Boolean);
+        let ry = 48;
+        rightLines.forEach(line => {
+            doc.text(line, 48, ry, { align: "right", width: 595 - 96 });
+            ry += 14;
+        });
+
+        let y = Math.max(ry, 110) + 20;
+
+        const col1 = 48;
+        const col2 = 220;
+
+        doc.font("Helvetica-Bold", 9).text("BILLED TO", 48, y);
+        doc.font("Helvetica", 11);
+        y += 14;
+        const billedLines = [
+            safe(billToName) || "Customer",
+            safe(billToCompany),
+            safe(billToAddress),
+            safe(billToCity),
+            safe(billToCountry)
+        ].filter(Boolean);
+        billedLines.forEach(line => {
+            doc.text(line, 48, y);
+            y += 14;
+        });
+
+        y = Math.max(y, 110 + 20);
+
+        doc.font("Helvetica-Bold", 9).text("DATE OF ISSUE", col2, 110);
+        doc.font("Helvetica", 11).text(dateOfIssue ? new Date(dateOfIssue).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }), col2, 124);
+
+        doc.font("Helvetica-Bold", 9).text("DUE DATE", col2, 148);
+        doc.font("Helvetica", 11).text(dueDate ? new Date(dueDate).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "N/A", col2, 162);
+
+        const col3 = 380;
+        doc.font("Helvetica-Bold", 9).text("INVOICE NUMBER", col3, 110);
+        doc.font("Helvetica", 11).text(safe(invoiceNo) || `INV-${Date.now().toString().slice(-6)}`, col3, 124);
+
+        y = Math.max(y, 190) + 10;
+
+        doc.moveTo(48, y).lineTo(595 - 48, y).stroke();
+        y += 8;
+
+        doc.font("Helvetica-Bold", 11);
+        doc.text("Description", 48, y);
+        doc.text("Rate", 380, y, { width: 70, align: "right" });
+        doc.text("Qty", 430, y, { width: 40, align: "right" });
+        doc.text("Line Total", 480, y, { width: 67, align: "right" });
+        y += 16;
+
+        doc.moveTo(48, y).lineTo(595 - 48, y).stroke();
+        y += 8;
+
+        doc.font("Helvetica", 11);
+        items.forEach(item => {
+            const price = Number(item.price);
+            const qty = item.quantity || 1;
+            const rate = price / qty;
+            doc.text(safe(item.name), 48, y, { width: 320 });
+            doc.text(`${sym}${fmt(rate)}`, 380, y, { width: 70, align: "right" });
+            doc.text(`${qty}`, 430, y, { width: 40, align: "right" });
+            doc.text(`${sym}${fmt(price)}`, 480, y, { width: 67, align: "right" });
+            y += 18;
+        });
+
+        y += 20;
+
+        const totalX = 595 - 48 - 260;
+        const totalW = 260;
+        doc.font("Helvetica", 11);
+        doc.text("Subtotal", totalX, y);
+        doc.text(`${sym}${fmt(subtotal)}`, totalX, y, { width: totalW, align: "right" });
+        y += 16;
+        doc.text("Tax", totalX, y);
+        doc.text(`${sym}${fmt(taxAmt)}`, totalX, y, { width: totalW, align: "right" });
+        y += 16;
+        doc.text("Total", totalX, y);
+        doc.text(`${sym}${fmt(grandTotal)}`, totalX, y, { width: totalW, align: "right" });
+        y += 16;
+        doc.text("Amount Paid", totalX, y);
+        doc.text(`${sym}0.00`, totalX, y, { width: totalW, align: "right" });
+        y += 8;
+
+        doc.moveTo(totalX, y).lineTo(595 - 48, y).stroke();
+        y += 8;
+
+        doc.font("Helvetica-Bold", 12).text(`Amount Due (${code})`, totalX, y);
+        doc.font("Helvetica-Bold", 18).text(`${sym}${fmt(grandTotal)}`, totalX, y, { width: totalW, align: "right" });
+        y += 30;
+
+        y = Math.max(y, 720);
+        doc.font("Helvetica", 10).fillColor("#666666");
+        doc.text("Thank you for your business", 48, y, { align: "center", width: 595 - 96 });
+        doc.fillColor("#000000");
+
+        doc.end();
+
+        await new Promise((resolve, reject) => {
+            stream.on("finish", resolve);
+            stream.on("error", reject);
+        });
 
         await db.run("INSERT INTO invoices (invoice_no, file_name, total, user_id) VALUES (?, ?, ?, ?)",
             [invoiceNo || `INV-${Date.now().toString().slice(-6)}`, pdfFile, grandTotal, req.user.id]);
@@ -706,13 +785,11 @@ app.use((err, req, res, next) => {
     });
 
     process.on("SIGTERM", async () => {
-        if (browserInstance) await browserInstance.close();
         await db.close();
         server.close(() => process.exit(0));
     });
 
     process.on("SIGINT", async () => {
-        if (browserInstance) await browserInstance.close();
         await db.close();
         server.close(() => process.exit(0));
     });
