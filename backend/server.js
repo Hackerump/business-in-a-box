@@ -15,10 +15,11 @@ const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 app.set("trust proxy", 1);
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
-);
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
+    const { createClient } = require("@supabase/supabase-js");
+    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+}
 const JWT_SECRET = process.env.JWT_SECRET;
 const SECRET = JWT_SECRET || require("crypto").randomBytes(32).toString("hex");
 if (!JWT_SECRET) {
