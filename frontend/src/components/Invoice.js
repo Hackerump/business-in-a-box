@@ -67,9 +67,14 @@ export default function Invoice() {
             body: JSON.stringify({ customer: billToName, items, invoiceNo, dueDate, dateOfIssue, companyName, addressLine1, addressLine2, addressCountry, phone, email, billToName, billToCompany, billToAddress, billToCity, billToCountry, billToEmail, currencySymbol, currencyCode })
         });
         const data = await res.json();
-        setLastInvoice(data.data);
-        setMessage(`Invoice #${invoiceNo} generated`);
-        setMessageType("success");
+        if (data.success) {
+            setLastInvoice(data.data);
+            setMessage(`Invoice #${invoiceNo} generated`);
+            setMessageType("success");
+        } else {
+            setMessage(data.message || "Failed to generate invoice");
+            setMessageType("error");
+        }
     };
 
     const downloadInvoice = async (e) => {
