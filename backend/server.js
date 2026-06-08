@@ -34,8 +34,8 @@ app.use(cors({
     origin: process.env.CORS_ORIGIN
         ? process.env.CORS_ORIGIN.split(",")
         : [
-            "https://business-in-a-box-backend.onrender.com",
-            "https://business-in-a-box-p4qu-q47523jdg-oneil-shelton-s-projects.vercel.app",
+            "https://business-in-a-box-bkend.onrender.com",
+            "https://business-in-a-box-p4qu-70cocf516-oneil-shelton-s-projects.vercel.app",
         ],
     credentials: true,
 }));
