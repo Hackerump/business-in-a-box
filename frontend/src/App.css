@@ -1020,6 +1020,7 @@ body.dark .tutorial-item p { color: #94a3b8; }
     .sidebar {
         transform: translateX(-100%);
         transition: transform 0.25s ease;
+        z-index: 12;
     }
     .sidebar.mobile-open {
         transform: translateX(0);
