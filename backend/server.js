@@ -33,10 +33,13 @@ app.use(helmet());
 app.use(cors({
     origin: process.env.CORS_ORIGIN
         ? process.env.CORS_ORIGIN.split(",")
-        : [
-            "https://business-in-a-box-bkend.onrender.com",
-            "https://business-in-a-box-p4qu-70cocf516-oneil-shelton-s-projects.vercel.app",
-        ],
+        : function (origin, cb) {
+            if (!origin || origin.endsWith(".vercel.app") || origin === "https://business-in-a-box-bkend.onrender.com") {
+                cb(null, true);
+            } else {
+                cb(new Error("Not allowed by CORS"));
+            }
+        },
     credentials: true,
 }));
 app.use(express.json({ limit: "1mb" }));
