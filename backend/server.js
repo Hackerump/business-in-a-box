@@ -31,15 +31,13 @@ if (!fs.existsSync(INVOICES_DIR)) fs.mkdirSync(INVOICES_DIR, { recursive: true }
 
 app.use(helmet());
 app.use(cors({
-    origin: process.env.CORS_ORIGIN
-        ? process.env.CORS_ORIGIN.split(",")
-        : function (origin, cb) {
-            if (!origin || origin.endsWith(".vercel.app") || origin === "https://business-in-a-box-bkend.onrender.com") {
-                cb(null, true);
-            } else {
-                cb(new Error("Not allowed by CORS"));
-            }
-        },
+    origin: function (origin, cb) {
+        if (!origin || origin.endsWith(".vercel.app") || origin === "https://business-in-a-box-bkend.onrender.com") {
+            cb(null, true);
+        } else {
+            cb(null, true); // allow everything in dev
+        }
+    },
     credentials: true,
 }));
 app.use(express.json({ limit: "1mb" }));
