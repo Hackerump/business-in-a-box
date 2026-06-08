@@ -12,7 +12,7 @@ if (DATABASE_URL) {
     const { Pool } = require("pg");
     let pool;
     try {
-        pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 5000 });
+        pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 10000, family: 4 });
     } catch (e) {
         console.error("Failed to create PostgreSQL pool:", e.message);
         process.exit(1);
