@@ -12,20 +12,7 @@ const DATABASE_URL = process.env.DATABASE_URL;
 
 if (DATABASE_URL) {
     const { Pool } = require("pg");
-
-    // Replace hostname with IPv4 address to avoid ENETUNREACH on IPv6
-    const buildConnStr = () => {
-        const match = DATABASE_URL.match(/^postgres:\/\/([^@]+)@([^:]+)(:\d+)\/(.+)$/);
-        if (!match) return DATABASE_URL;
-        const [, auth, host, port, db] = match;
-        try {
-            const addr = dns.promises.resolve4(host);
-            // Can't await here, will handle in init
-        } catch (e) {
-            // ignore
-        }
-        return DATABASE_URL;
-    };
+    let pool;
 
     const init = async () => {
         const match = DATABASE_URL.match(/^postgres:\/\/([^@]+)@([^:]+)(:\d+)\/(.+)$/);
@@ -42,44 +29,49 @@ if (DATABASE_URL) {
             }
         }
 
-        console.log("Connecting to PostgreSQL...");
+        pool = new Pool({
+            connectionString: connStr,
+            ssl: { rejectUnauthorized: false },
+            connectionTimeoutMillis: 10000,
+        });
 
-        let pool;
+        // Test connection
         try {
-            pool = new Pool({
-                connectionString: connStr,
-                ssl: { rejectUnauthorized: false },
-                connectionTimeoutMillis: 10000,
-            });
-        } catch (e) {
-            console.error("Failed to create PostgreSQL pool:", e.message);
-            process.exit(1);
-        }
-
-        dbInst.run = (sql, params) => pool.query(sql, params || []).then(r => ({ lastID: r.rows[0]?.id, changes: r.rowCount, rows: r.rows }));
-        dbInst.get = (sql, params) => pool.query(sql, params || []).then(r => r.rows[0] || null);
-        dbInst.all = (sql, params) => pool.query(sql, params || []).then(r => r.rows);
-        dbInst.execSchema = (sql) => pool.query(sql);
-        dbInst.close = () => pool.end();
-        dbInst.isPG = true;
-
-        // Run schema init now that pool is ready
-        try {
+            const client = await pool.connect();
+            client.release();
+            console.log("PostgreSQL connected");
+            // Run schema
             const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
             await pool.query(schema);
             console.log("Schema initialized");
         } catch (e) {
-            console.error("Schema init failed:", e.message);
+            console.error("PostgreSQL connection failed:", e.message);
         }
     };
 
     const dbInst = {
-        run: () => { throw new Error("Database not initialized yet"); },
-        get: () => { throw new Error("Database not initialized yet"); },
-        all: () => { throw new Error("Database not initialized yet"); },
-        execSchema: () => { throw new Error("Database not initialized yet"); },
-        close: () => {},
+        ready: init(),
         isPG: true,
+        async run(sql, params) {
+            await this.ready;
+            const q = toPgParams(sql, params || []);
+            const r = await pool.query(q.sql, q.params);
+            return { lastID: r.rows[0]?.id, changes: r.rowCount, rows: r.rows };
+        },
+        async get(sql, params) {
+            await this.ready;
+            const q = toPgParams(sql, params || []);
+            const r = await pool.query(q.sql, q.params);
+            return r.rows[0] || null;
+        },
+        async all(sql, params) {
+            await this.ready;
+            const q = toPgParams(sql, params || []);
+            const r = await pool.query(q.sql, q.params);
+            return r.rows;
+        },
+        async execSchema(sql) { await pool.query(sql); },
+        close: () => pool.end(),
         strftime: (fmt, col) => ({ sql: `TO_CHAR(${col}, 'YYYY-MM')` }),
         insertOrIgnore: (table, cols, values, conflictCol) => {
             const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
@@ -91,17 +83,14 @@ if (DATABASE_URL) {
         },
     };
 
-    init().catch(err => {
-        console.error("Database initialization failed:", err.message);
-        process.exit(1);
-    });
-
     module.exports = dbInst;
 } else {
     const sqlite3 = require("sqlite3").verbose();
     const db = new sqlite3.Database(path.join(__dirname, "business.db"));
 
     module.exports = {
+        ready: Promise.resolve(),
+        isPG: false,
         run: (sql, params) => new Promise((resolve, reject) => {
             db.run(sql, params || [], function(err) {
                 if (err) reject(err);
@@ -125,7 +114,6 @@ if (DATABASE_URL) {
         }),
         serialize: (fn) => db.serialize(fn),
         close: () => { db.close(); },
-        isPG: false,
         strftime: (fmt, col) => ({ sql: `strftime('${fmt}', ${col})` }),
         insertOrIgnore: (table, cols, values) => {
             const placeholders = values.map(() => "?").join(", ");

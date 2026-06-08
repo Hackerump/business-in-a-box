@@ -699,18 +699,25 @@ app.use((err, req, res, next) => {
     res.status(500).json({ success: false, message: "Internal server error" });
 });
 
-const server = app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT} [${db.isPG ? "PostgreSQL" : "SQLite"}]`);
-});
+// Wait for DB to be ready before accepting requests
+(async () => {
+    await db.ready;
+    const server = app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT} [${db.isPG ? "PostgreSQL" : "SQLite"}]`);
+    });
 
-process.on("SIGTERM", async () => {
-    if (browserInstance) await browserInstance.close();
-    await db.close();
-    server.close(() => process.exit(0));
-});
+    process.on("SIGTERM", async () => {
+        if (browserInstance) await browserInstance.close();
+        await db.close();
+        server.close(() => process.exit(0));
+    });
 
-process.on("SIGINT", async () => {
-    if (browserInstance) await browserInstance.close();
-    await db.close();
-    server.close(() => process.exit(0));
+    process.on("SIGINT", async () => {
+        if (browserInstance) await browserInstance.close();
+        await db.close();
+        server.close(() => process.exit(0));
+    });
+})().catch(err => {
+    console.error("DB init failed:", err.message);
+    process.exit(1);
 });
