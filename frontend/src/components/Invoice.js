@@ -72,7 +72,7 @@ export default function Invoice() {
         setMessageType("success");
     };
 
-    const downloadInvoice = async () => {
+    const downloadInvoice = async (e) => {
         if (!lastInvoice) return;
         const res = await authFetch(`/invoice/${lastInvoice.file}`);
         const blob = await res.blob();
@@ -80,7 +80,9 @@ export default function Invoice() {
         const a = document.createElement("a");
         a.href = url;
         a.download = lastInvoice.file;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(url);
     };
 
@@ -92,7 +94,7 @@ export default function Invoice() {
     return (
         <div className="page">
             <h1>Invoice Generator</h1>
-            {message && <div className={`info-box ${messageType === "error" ? "error-box" : ""}`}>{message}</div>}
+            {message && <div className={`info-box ${messageType === "error" ? "error-box" : ""}`}>{message}{lastInvoice && messageType === "success" && <span className="message-download" onClick={downloadInvoice}> Download PDF</span>}</div>}
 
             <div className="invoice-layout">
                 <div className="invoice-form">

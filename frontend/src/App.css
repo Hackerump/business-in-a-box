@@ -1130,6 +1130,12 @@ body.dark .tutorial-item p { color: #94a3b8; }
     position: sticky;
     top: 24px;
 }
+.message-download {
+    cursor: pointer;
+    text-decoration: underline;
+    font-weight: 600;
+    margin-left: 8px;
+}
 @media (max-width: 768px) {
     .invoice-layout {
         flex-direction: column;
