@@ -62,19 +62,25 @@ export default function Invoice() {
             quantity: 1
         }));
 
-        const res = await authFetch("/invoice", {
-            method: "POST",
-            body: JSON.stringify({ customer: billToName, items, invoiceNo, dueDate, dateOfIssue, companyName, addressLine1, addressLine2, addressCountry, phone, email, billToName, billToCompany, billToAddress, billToCity, billToCountry, billToEmail, currencySymbol, currencyCode })
-        });
-        const data = await res.json();
-        if (data.success) {
-            setLastInvoice(data.data);
-            setMessage(`Invoice #${invoiceNo} generated`);
-            setMessageType("success");
-        } else {
-            setMessage(data.message || "Failed to generate invoice");
+        try {
+            const res = await authFetch("/invoice", {
+                method: "POST",
+                body: JSON.stringify({ customer: billToName, items, invoiceNo, dueDate, dateOfIssue, companyName, addressLine1, addressLine2, addressCountry, phone, email, billToName, billToCompany, billToAddress, billToCity, billToCountry, billToEmail, currencySymbol, currencyCode })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setLastInvoice(data.data);
+                setMessage(`Invoice #${invoiceNo} generated`);
+                setMessageType("success");
+            } else {
+                setMessage(data.message || "Failed to generate invoice");
+                setMessageType("error");
+            }
+        } catch (err) {
+            setMessage("Network error — please try again");
             setMessageType("error");
         }
+    };
     };
 
     const downloadInvoice = async (e) => {
