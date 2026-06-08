@@ -15,14 +15,16 @@ if (DATABASE_URL) {
     let pool;
 
     const init = async () => {
-        const match = DATABASE_URL.match(/^postgres:\/\/([^@]+)@([^:]+)(:\d+)\/(.+)$/);
+        const match = DATABASE_URL.match(/^postgres(ql)?:\/\/([^@]+)@([^:]+)(:\d+)\/(.+)$/);
         let connStr = DATABASE_URL;
         if (match) {
-            const [, auth, host, port, db] = match;
+            const scheme = match[1] ? "postgresql" : "postgres";
+            const auth = match[2], host = match[3], port = match[4], db = match[5];
             try {
                 const addr = await dns.promises.resolve4(host);
                 if (addr && addr.length > 0) {
-                    connStr = `postgres://${auth}@${addr[0]}${port}/${db}`;
+                    connStr = `${scheme}://${auth}@${addr[0]}${port}/${db}`;
+                    console.log(`Resolved ${host} → ${addr[0]}`);
                 }
             } catch (e) {
                 console.warn("DNS resolution failed, using hostname as-is:", e.message);
